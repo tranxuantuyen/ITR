@@ -1,0 +1,1 @@
+from .itr_transformer_decoder import ITRMultiScaleMaskedTransformerDecoder
