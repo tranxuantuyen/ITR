@@ -7,7 +7,7 @@ inference_test_output
 **/.DS_Store
 .DS_Store
 *.out
-
+draft*
 *.png
 *.json
 *.diff
