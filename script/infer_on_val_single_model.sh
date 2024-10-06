@@ -9,10 +9,8 @@
 # SBATCH --qos=batch-short
 
 cd ..
-source activate
-conda activate vita 
-model_file="/home/s222126678/Documents/meccano/project/ITR_project/output/exp_08_09_rnn_residual/model_0100999.pth"
-config_file="/home/s222126678/Documents/meccano/project/ITR_project/output/exp_08_09_rnn_residual/config.yaml"
+model_file="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_05/model_0082499.pth"
+config_file="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_05/config.yaml"
 num_gpus=4
 
 

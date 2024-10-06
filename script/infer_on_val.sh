@@ -11,17 +11,17 @@
 cd ..
 source activate
 conda activate vita 
-model_dir="/home/s222126678/Documents/meccano/project/ITR_project/output/exp_13_09_concat"
+model_dir="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_05"
 
 for model_file in "$model_dir"/*.pth
 do
-    rm -rf output_temp_concat/inference
+    rm -rf output_tem/inference
     echo "======= Model name: $(basename "$model_file") ======="
     python train_net_itr.py \
-    --config-file /home/s222126678/Documents/meccano/project/ITR_project/output/exp_13_09_concat/config.yaml \
+    --config-file /home/s222126678/Documents/meccano/project/ITR/output/exp_10_05/config.yaml \
     --num-gpus 4 --dist-url auto --eval-only \
     MODEL.WEIGHTS "$model_file" \
-    OUTPUT_DIR output_temp_concat DATASETS.TEST '("mevis_val",)' \
+    OUTPUT_DIR output_tem DATASETS.TEST '("mevis_val",)' \
     SOLVER.IMS_PER_BATCH 4
-    python tools/eval_mevis.py --mevis_pred_path output_temp_concat/inference
+    python tools/eval_mevis.py --mevis_pred_path output_tem/inference
 done

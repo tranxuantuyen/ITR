@@ -13,10 +13,10 @@ source activate
 conda activate vita 
 cd ..
 python train_net_itr.py \
-    --config-file /home/s222126678/Documents/meccano/project/ITR_project/output/exp_08_09_rnn_residual/config.yaml \
+    --config-file /home/s222126678/Documents/meccano/project/ITR/output/exp_20_09v5/config.yaml \
     --num-gpus 4 --dist-url auto --eval-only \
-    MODEL.WEIGHTS /home/s222126678/Documents/meccano/project/ITR_project/output/exp_08_09_rnn_residual/save/model_0082499.pth \
-    OUTPUT_DIR output/54_66 DATASETS.TEST '("mevis_test",)' \
+    MODEL.WEIGHTS /home/s222126678/Documents/meccano/project/ITR/output/exp_20_09v5/model_0087499.pth \
+    OUTPUT_DIR output/54_73 DATASETS.TEST '("mevis_test",)' \
     SOLVER.BASE_LR 0.000025 \
     SOLVER.MAX_ITER 110000 \
     SOLVER.IMS_PER_BATCH 4

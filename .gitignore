@@ -13,7 +13,7 @@ draft*
 *.diff
 *.jpg
 !/projects/DensePose/doc/images/*.jpg
-
+MyNote.md
 # compilation and distribution
 __pycache__
 _ext

@@ -4,7 +4,6 @@ import random
 import numpy as np
 from typing import List, Union
 import torch
-
 from detectron2.config import configurable
 from detectron2.structures import (
     BitMasks,
@@ -21,6 +20,7 @@ from .augmentation import build_augmentation
 from transformers import BertTokenizer, RobertaTokenizerFast
 import spacy
 
+from . import tree_process as tp
 __all__ = ["MeViSDatasetMapper"]
 
 
@@ -292,6 +292,7 @@ class MeViSDatasetMapper:
             else:
                 instance_check = False
         sentence_raw = dataset_dict['sentence']
+        
         attention_mask = [0] * self.max_tokens
         padded_input_ids = [0] * self.max_tokens
 
@@ -304,4 +305,21 @@ class MeViSDatasetMapper:
         dataset_dict['lang_tokens'] = torch.tensor(padded_input_ids).unsqueeze(0)
         dataset_dict['lang_mask'] = torch.tensor(attention_mask).unsqueeze(0)
         dataset_dict['dataset_name'] = 'mevis'
+        if len(dataset_dict['tree']) > 0:
+            tree_dict = dataset_dict['tree']
+            tree = tp.TreeFull(tree_dict)
+            calculation_procedure = tree.calculattion_procedure()
+            text_of_tree = [node.text for node in calculation_procedure]
+            for i_text, text in enumerate(text_of_tree):
+                attention_mask_of_tree = [0] * self.max_tokens
+                padded_input_id_of_tree = [0] * self.max_tokens
+                id_of_tree = self.tokenizer.encode(text=text, add_special_tokens=True)
+                id_of_tree = id_of_tree[:self.max_tokens]
+                padded_input_id_of_tree[:len(id_of_tree)] = id_of_tree
+                attention_mask_of_tree[:len(id_of_tree)] = [1] * len(id_of_tree)
+                calculation_procedure[i_text].lang_tokens_tree = torch.tensor(padded_input_id_of_tree).unsqueeze(0)
+                calculation_procedure[i_text].lang_mask_tree = torch.tensor(attention_mask_of_tree).unsqueeze(0)
+        else:
+            calculation_procedure = None
+        dataset_dict['calculation_procedure'] = calculation_procedure
         return dataset_dict

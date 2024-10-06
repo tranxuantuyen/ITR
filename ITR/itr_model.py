@@ -309,6 +309,20 @@ class ITR(nn.Module):
         lang_feat = self.resizer(lang_feat)
 
         lang_feat_fusion = self.resizer(lang_feat_sentence)
+        calculation_procedure = batched_inputs[0]['calculation_procedure']
+        if calculation_procedure is not None:
+            tree_text_emb = [tree.lang_tokens_tree.to(self.device) for tree in calculation_procedure]
+            tree_text_emb = torch.cat(tree_text_emb, dim=0)
+
+            tree_lang_mask = [tree.lang_mask_tree.to(self.device) for tree in calculation_procedure]
+            tree_lang_mask = torch.cat(tree_lang_mask, dim=0)
+            tree_lang_feat_all = self.text_encoder(tree_text_emb, attention_mask=tree_lang_mask) # B, Nl, 768
+            # lang_feat_sentence_tree = tree_lang_feat_all.last_hidden_state
+            lang_feat_tree = tree_lang_feat_all.pooler_output
+            lang_feat_tree = self.resizer(lang_feat_tree)
+
+            for i_elem, elem in enumerate(calculation_procedure):
+                elem.lang_feat = lang_feat_tree[i_elem]
 
         motion_feat = torch.cat([lang_feat_fusion[motion_map.bool()], lang_feat], dim=0)
         static_feat = torch.cat([lang_feat_fusion[static_map.bool()], lang_feat], dim=0)
@@ -343,7 +357,7 @@ class ITR(nn.Module):
         # bipartite matching-based loss
         losses, fg_indices = self.criterion(outputs, frame_targets)
 
-        vita_outputs = self.vita_module(frame_queries, lang_feat_fusion, lang_mask, motion_feat, itr_feat=itr_feat)
+        vita_outputs = self.vita_module(frame_queries, lang_feat_fusion, lang_mask, motion_feat, itr_feat=itr_feat, cal_procedure=calculation_procedure)
         vita_outputs["pred_masks"] = torch.einsum("lbqc,btchw->lbqthw", vita_outputs["pred_mask_embed"], mask_features)
         for out in vita_outputs["aux_outputs"]:
             out["pred_masks"] = torch.einsum("lbqc,btchw->lbqthw", out["pred_mask_embed"], mask_features)
@@ -533,6 +547,22 @@ class ITR(nn.Module):
         lang_mask_ = lang_mask
         lang_mask = lang_mask.unsqueeze(dim=-1)  # (batch, N_l, 1)
 
+
+        calculation_procedure = batched_inputs['calculation_procedure']
+        if calculation_procedure is not None:
+            tree_text_emb = [tree.lang_tokens_tree.to(self.device) for tree in calculation_procedure]
+            tree_text_emb = torch.cat(tree_text_emb, dim=0)
+
+            tree_lang_mask = [tree.lang_mask_tree.to(self.device) for tree in calculation_procedure]
+            tree_lang_mask = torch.cat(tree_lang_mask, dim=0)
+            tree_lang_feat_all = self.text_encoder(tree_text_emb, attention_mask=tree_lang_mask) # B, Nl, 768
+            # lang_feat_sentence_tree = tree_lang_feat_all.last_hidden_state
+            lang_feat_tree = tree_lang_feat_all.pooler_output
+            lang_feat_tree = self.resizer(lang_feat_tree)
+
+            for i_elem, elem in enumerate(calculation_procedure):
+                elem.lang_feat = lang_feat_tree[i_elem]
+
         for i in range(math.ceil(num_frames / self.test_run_chunk_size)):
             images = batched_inputs["image"][i*self.test_run_chunk_size : (i+1)*self.test_run_chunk_size]
             images = [(x.to(self.device) - self.pixel_mean) / self.pixel_std for x in images]
@@ -565,8 +595,7 @@ class ITR(nn.Module):
         frame_queries = torch.cat(frame_queries)[None]  # 1, T, fQ, C
         mask_features = torch.cat(mask_features)        # T, C, H, W
 
-        vita_outputs = self.vita_module(frame_queries, lang_feat_fusion, lang_mask_, motion_feat, itr_feat=itr_feat)
-
+        vita_outputs = self.vita_module(frame_queries, lang_feat_fusion, lang_mask_, motion_feat, itr_feat=itr_feat, cal_procedure=calculation_procedure)
         mask_cls = vita_outputs["pred_logits"][-1, 0]       # cQ, K+1
         mask_embed = vita_outputs["pred_mask_embed"][-1, 0] # cQ, C
 

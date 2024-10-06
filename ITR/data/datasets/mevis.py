@@ -49,6 +49,7 @@ def load_mevis_json(image_root, json_file):
                 meta['exp_id'] = exp_id
                 meta['category'] = 0
                 meta['length'] = vid_len
+                meta['tree'] = exp_dict['tree']
                 metas.append(meta)
     else:
         for vid in videos:
@@ -66,6 +67,7 @@ def load_mevis_json(image_root, json_file):
                 meta['exp_id'] = exp_id
                 meta['category'] = 0
                 meta['length'] = vid_len
+                meta['tree'] = exp_dict['tree']
                 metas.append(meta)
 
     dataset_dicts = []
@@ -103,6 +105,7 @@ def load_mevis_json(image_root, json_file):
         record["sentence"] = exp
         record["exp_id"] = exp_id
         record["video_name"] = video_name
+        record['tree'] = vid_dict['tree']
         dataset_dicts.append(record)
 
     if num_instances_without_valid_segmentation > 0:

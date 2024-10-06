@@ -304,6 +304,15 @@ def main(args):
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
+    # args.config_file = "configs/itr_swin_tiny.yaml"
+    # args.eval_only = True
+    # args.opts = ['OUTPUT_DIR', 'output/debug', 'DATASETS.TEST', '("mevis_val",)',
+    #             'MODEL.WEIGHTS', 'model_final_86143f.pkl',
+    #             'SOLVER.IMS_PER_BATCH', '4', 'ITR.SPTIO_TEMP_ENCODER_LAYER', '6',
+    #             'ITR.WEIGHT_RESUDIAL_PATH', True, 'ITR.WEIGHT_RESUDIAL_IN_RNN', True,
+    #             'ITR.FUSE_VISION_TEXT', 'add', 'TEST.EVAL_PERIOD', 100, 'DATALOADER.NUM_WORKERS', 26,
+    #             ]
+    # args.num_gpus = 4
     print("Command Line Args:", args)
     launch(
         main,

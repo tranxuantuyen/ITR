@@ -15,7 +15,7 @@ python train_net_itr.py \
     --config-file configs/itr_swin_tiny.yaml \
     --num-gpus 4 --dist-url auto \
     MODEL.WEIGHTS model_final_86143f.pkl \
-    OUTPUT_DIR output/exp_20_09v2 DATASETS.TEST '("mevis_val",)' \
+    OUTPUT_DIR output/exp_10_05 DATASETS.TEST '("mevis_val",)' \
     SOLVER.BASE_LR 0.000025 \
     SOLVER.MAX_ITER 160000 \
     SOLVER.IMS_PER_BATCH 4 \
