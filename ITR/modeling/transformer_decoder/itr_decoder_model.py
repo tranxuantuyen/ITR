@@ -10,7 +10,7 @@ from detectron2.layers import Conv2d
 from .fuse_modules import BiAttentionBlock
 from scipy.optimize import linear_sum_assignment
 import numpy as np
-
+import itertools
 
 class SelfAttentionLayer(nn.Module):
 
@@ -495,6 +495,8 @@ class ItrSpatialTemporal(nn.Module):
         verb_feat = [verb_feat_init + self.cross_verb(verb_feat_init, itr_.unsqueeze(1).repeat(1, B, 1)) for itr_ in itr_feat[1]]
         itr_refine_feat = (noun_feat, verb_feat)
 
+        language = sum(noun_feat) + sum(verb_feat)
+        frame_query = frame_query + language
         frame_query = self.encode_frame_query(frame_query, enc_mask, cal_procedure, itr_refine_feat)
         frame_query = frame_query[:T].flatten(0, 1)  # TfQ, LB, C
 
@@ -610,14 +612,29 @@ class ItrSpatialTemporal(nn.Module):
         if calculation_procedure is None and 'NP' in allType and 'VP' in allType:
             frame_query_dict = {}
             for step in calculation_procedure:
-                if len(step.child) == 0:
+                try:
+                    if len(step.child) == 0:
+                        frame_query_dict[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
+                    else:
+                        child_query = [frame_query_dict[child_id] for child_id in step.child if child_id in frame_query_dict.keys()]
+                        child_query = sum(child_query) / len(child_query)
+                        frame_query_dict[step.id] = child_query + self.np_vp_refinement(layer_idx, child_query, step=step)
+                except:
                     frame_query_dict[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
-                else:
-                    child_query = [frame_query_dict[child_id] for child_id in step.child]
-                    child_query = sum(child_query) / len(child_query)
-                    frame_query_dict[step.id] = self.np_vp_refinement(layer_idx, child_query, step=step)
-            return frame_query_dict['0_0_0']
 
+            forward = frame_query_dict['0_0_0']
+
+            backword_procedure = calculation_procedure[::-1]
+            frame_query_dict_back = {}
+            for step in backword_procedure:
+                if step.id == '0_0_0':
+                    frame_query_dict_back[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
+                else:
+                    parent_query = frame_query_dict_back[step.parent]
+                    frame_query_dict_back[step.id] = self.np_vp_refinement(layer_idx, parent_query, step=step)
+            backward = frame_query_dict_back['0_0_0']
+            return forward + backward
+            
         else:
             recurrent_num = len(noun_verb_feature[0])
             all_noun, all_verb = noun_verb_feature
