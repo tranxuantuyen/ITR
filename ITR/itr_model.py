@@ -645,9 +645,6 @@ class ITR(nn.Module):
 
             result.pred_masks = masks_per_video[:, 0].float()   # T=1 for COCO
             result.pred_boxes = Boxes(torch.zeros(mask_pred.size(0), 4))
-            # Uncomment the following to get boxes from masks (this is slow)
-            # result.pred_boxes = BitMasks(mask_pred > 0).get_bounding_boxes()
-
             result.scores = scores_per_video
             result.pred_classes = labels_per_video
 

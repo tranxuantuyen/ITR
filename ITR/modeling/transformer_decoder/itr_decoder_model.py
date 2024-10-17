@@ -609,31 +609,26 @@ class ItrSpatialTemporal(nn.Module):
             allType = [ty.label for ty in calculation_procedure]
         else:
             allType = []
-        if calculation_procedure is None and 'NP' in allType and 'VP' in allType:
-            frame_query_dict = {}
+        if calculation_procedure is not None and 'NP' in allType and 'VP' in allType:
+            frame_query_dict_forward = {}
             for step in calculation_procedure:
-                try:
-                    if len(step.child) == 0:
-                        frame_query_dict[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
-                    else:
-                        child_query = [frame_query_dict[child_id] for child_id in step.child if child_id in frame_query_dict.keys()]
-                        child_query = sum(child_query) / len(child_query)
-                        frame_query_dict[step.id] = child_query + self.np_vp_refinement(layer_idx, child_query, step=step)
-                except:
-                    frame_query_dict[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
-
-            forward = frame_query_dict['0_0_0']
-
-            backword_procedure = calculation_procedure[::-1]
-            frame_query_dict_back = {}
-            for step in backword_procedure:
-                if step.id == '0_0_0':
-                    frame_query_dict_back[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
+                if len(step.child) > 0 and all(child in frame_query_dict_forward.keys() for child in step.child):
+                    child_query = [frame_query_dict_forward[child_id] for child_id in step.child]
+                    child_query = sum(child_query) / len(child_query)
+                    frame_query_dict_forward[step.id] = child_query + self.np_vp_refinement(layer_idx, child_query, step=step)
                 else:
+                    frame_query_dict_forward[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
+            backward_procedure = calculation_procedure[::-1]
+            frame_query_dict_back = {}
+            for step in backward_procedure:
+                if step.id != '0_0_0' and step.parent in frame_query_dict_back.keys():
                     parent_query = frame_query_dict_back[step.parent]
-                    frame_query_dict_back[step.id] = self.np_vp_refinement(layer_idx, parent_query, step=step)
-            backward = frame_query_dict_back['0_0_0']
-            return forward + backward
+                    frame_query_dict_back[step.id] = parent_query + self.np_vp_refinement(layer_idx, parent_query, step=step)
+                else:
+                    frame_query_dict_back[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
+            # backward = frame_query_dict_back['0_0_0']
+            final = sum(sum(frame_query_dict_forward.values()) / len(frame_query_dict_forward) + sum(frame_query_dict_back.values()) / len(frame_query_dict_back)) / 2
+            return final
             
         else:
             recurrent_num = len(noun_verb_feature[0])
