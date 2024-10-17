@@ -304,7 +304,7 @@ def main(args):
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
-    args.config_file = "configs/itr_swin_tiny.yaml"
+    # args.config_file = "configs/itr_swin_tiny.yaml"
     # args.eval_only = True
     # args.opts = ['OUTPUT_DIR', 'output/debug', 'DATASETS.TEST', '("mevis_val",)',
     #             'MODEL.WEIGHTS', 'model_final_86143f.pkl',
