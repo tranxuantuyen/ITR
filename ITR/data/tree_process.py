@@ -2,6 +2,8 @@ import benepar, spacy
 from nltk import Tree
 from collections import defaultdict
 import copy
+from collections import deque
+
 # nlp = spacy.load('en_core_web_md')
 # nlp.add_pipe("benepar", config={"model": "benepar_en3"})
 def tree_to_dict(tree):
@@ -64,27 +66,55 @@ def get_tree_dict(sentence):
     const_tree = Tree.fromstring(input_str)
     const_tree_reduce = copy.deepcopy(const_tree)
     const_tree_reduce = remove_sbar(const_tree_reduce)
-    subtrees_with_distances = extract_np_vp_subtrees(const_tree_reduce, bank)
-    all_depth = {int(node_id.split('_')[0]) for _,_, node_id in subtrees_with_distances}
-    tree_dict = {}
-    for subtree, label, node_id in subtrees_with_distances:
-        assert node_id not in tree_dict
-        tree_dict[node_id] = {}
-        tree_dict[node_id]['child'] = []
-        tree_dict[node_id]['text']  = subtree
-        tree_dict[node_id]['label']  = label
-        depth, location, _ = [int(i) for i in node_id.split('_')]
-        if depth == 0:
-            tree_dict[node_id]['parent'] = "root"
-        elif depth == 1:
-            tree_dict[node_id]['parent'] = '0_0_0'
-        else:
-            candidate_parrent = [i[2] for i in subtrees_with_distances if subtree in i[0] and i[2] != node_id]
-            tree_dict[node_id]['parent'] = max(candidate_parrent, key=lambda x: int(x.split('_')[0]))
+    try:
+        subtrees_with_distances = extract_np_vp_subtrees(const_tree_reduce, bank)
+        all_depth = {int(node_id.split('_')[0]) for _,_, node_id in subtrees_with_distances}
+        tree_dict = {}
+        for subtree, label, node_id in subtrees_with_distances:
+            assert node_id not in tree_dict
+            tree_dict[node_id] = {}
+            tree_dict[node_id]['child'] = []
+            tree_dict[node_id]['text']  = subtree
+            tree_dict[node_id]['label']  = label
+            depth, location, _ = [int(i) for i in node_id.split('_')]
+            if depth == 0:
+                tree_dict[node_id]['parent'] = "root"
+            elif depth == 1:
+                tree_dict[node_id]['parent'] = '0_0_0'
+            else:
+                candidate_parrent = [i[2] for i in subtrees_with_distances if subtree in i[0] and i[2] != node_id]
+                tree_dict[node_id]['parent'] = max(candidate_parrent, key=lambda x: int(x.split('_')[0]))
+    except:
+        queue = deque(list(sent._.children))
+        first_np = None
+        first_vp = None
+        while queue and (first_np is None or first_vp is None):
+            current = queue.popleft()
+            if first_np is None and "NP" in current._.labels:
+                first_np = current
+            elif first_vp is None and "VP" in current._.labels:
+                first_vp = current
+            queue.extend(list(current._.children))
+        if first_np is not None and first_vp is None:
+            first_vp = sent[len(first_np):] 
+        if first_np is None:
+            first_np = sent
+        tree_dict = {}
+        tree_dict['1_0_0'] = {}
+        tree_dict['1_0_0']['child'] = []
+        tree_dict['1_0_0']['text'] = first_np.text
+        tree_dict['1_0_0']['label'] = 'NP'
+        tree_dict['1_0_0']['parent'] = '0_0_0'
+        tree_dict['1_0_1'] = {}
+        tree_dict['1_0_1']['child'] = []
+        tree_dict['1_0_1']['text'] = first_vp.text
+        tree_dict['1_0_1']['label'] = 'VP'
+        tree_dict['1_0_1']['parent'] = '0_0_0'
+
     if '0_0_0' not in tree_dict.keys():
         tree_dict['0_0_0'] = {}
         tree_dict['0_0_0']['child'] = []
-        tree_dict['0_0_0']['text'] = ' '.join(const_tree_reduce.flatten())
+        tree_dict['0_0_0']['text'] = sentence
         tree_dict['0_0_0']['label'] = 'S'
         tree_dict['0_0_0']['parent'] = 'root'
     for key, value in tree_dict.items():
@@ -123,7 +153,7 @@ class TreeFull:
         return procedure
     
 if __name__ == "__main__":
-    sentence = "The quick brown fox jumps over the lazy dog."
+    sentence = "The sea turtles in the ocean, peacefully swimming together."
     tree_dict = get_tree_dict(sentence)
     tree = TreeFull(tree_dict)
     print(tree.calculattion_procedure())
