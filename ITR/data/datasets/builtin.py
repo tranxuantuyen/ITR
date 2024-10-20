@@ -4,11 +4,11 @@ from .mevis import register_mevis_instances
 # ====    Predefined splits for mevis    ===========
 _PREDEFINED_SPLITS_mevis = {
     "mevis_train": ("mevis/train",
-                   "mevis/train/tree_meta.json"),
+                   "mevis/train/tree_meta_train.json"),
     "mevis_val": ("mevis/valid_u",
-                 "mevis/valid_u/tree_meta.json"),
+                 "mevis/valid_u/tree_meta_valid_u.json"),
     "mevis_test": ("mevis/valid",
-                  "mevis/valid/tree_meta.json"),
+                  "mevis/valid/tree_meta_valid.json"),
 }
 
 

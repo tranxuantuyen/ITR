@@ -308,11 +308,11 @@ if __name__ == "__main__":
     # args.eval_only = True
     # args.opts = ['OUTPUT_DIR', 'output/debug', 'DATASETS.TEST', '("mevis_val",)',
     #             'MODEL.WEIGHTS', 'model_final_86143f.pkl',
-    #             'SOLVER.IMS_PER_BATCH', '2', 'ITR.SPTIO_TEMP_ENCODER_LAYER', '6',
+    #             'SOLVER.IMS_PER_BATCH', '4', 'ITR.SPTIO_TEMP_ENCODER_LAYER', '6',
     #             'ITR.WEIGHT_RESUDIAL_PATH', False, 'ITR.WEIGHT_RESUDIAL_IN_RNN', False,
     #             'ITR.FUSE_VISION_TEXT', 'add', 'TEST.EVAL_PERIOD', 10000000, 'DATALOADER.NUM_WORKERS', 1,
     #             ]
-    # args.num_gpus = 2
+    # args.num_gpus = 4
     # os.environ['TORCH_DISTRIBUTED_DEBUG'] = 'DETAIL'
     print("Command Line Args:", args)
     launch(

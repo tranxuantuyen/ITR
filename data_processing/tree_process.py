@@ -84,6 +84,11 @@ def get_tree_dict(sentence):
             else:
                 candidate_parrent = [i[2] for i in subtrees_with_distances if subtree in i[0] and i[2] != node_id]
                 tree_dict[node_id]['parent'] = max(candidate_parrent, key=lambda x: int(x.split('_')[0]))
+        label_set = set()
+        for node in tree_dict.keys():
+            label_set.add(tree_dict[node]['label'])
+        if 'NP' not in label_set or 'VP' not in label_set:
+            assert False
     except:
         queue = deque(list(sent._.children))
         first_np = None
@@ -99,6 +104,8 @@ def get_tree_dict(sentence):
             first_vp = sent[len(first_np):] 
         if first_np is None:
             first_np = sent
+        if first_vp is None:
+            first_vp = sent
         tree_dict = {}
         tree_dict['1_0_0'] = {}
         tree_dict['1_0_0']['child'] = []
@@ -122,7 +129,6 @@ def get_tree_dict(sentence):
         if parent in tree_dict:
             tree_dict[parent]['child'].append(key)
     return tree_dict
-
 class Node:
     def __init__(self, node_instance):
         key, value = node_instance

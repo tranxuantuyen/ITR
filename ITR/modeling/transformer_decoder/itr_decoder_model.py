@@ -415,16 +415,6 @@ class ItrSpatialTemporal(nn.Module):
                     nhead=nheads,
                     dropout=0.1,
                     normalize_before=pre_norm)
-        self.cross_noun = CrossAttentionLayer(d_model=hidden_dim,
-            nhead=nheads,
-            dropout=0.1,
-            normalize_before=pre_norm)
-        self.cross_verb = CrossAttentionLayer(d_model=hidden_dim,
-            nhead=nheads,
-            dropout=0.1,
-            normalize_before=pre_norm)
-        self.noun_feat_init = nn.Embedding(1, hidden_dim)
-        self.verb_feat_init = nn.Embedding(1, hidden_dim)
         if self.cfg.ITR.WEIGHT_RESUDIAL_PATH:
             self.weight_resudial_path = nn.Linear(hidden_dim, hidden_dim)
         if self.cfg.ITR.WEIGHT_RESUDIAL_IN_RNN:
@@ -489,15 +479,7 @@ class ItrSpatialTemporal(nn.Module):
             enc_mask[:, :T] = False
         else:
             enc_mask = None
-        noun_feat_init = self.noun_feat_init.weight.unsqueeze(1).repeat(1, B, 1)
-        verb_feat_init = self.verb_feat_init.weight.unsqueeze(1).repeat(1, B, 1)
-        noun_feat = [noun_feat_init + self.cross_noun(noun_feat_init, itr_.unsqueeze(1).repeat(1, B, 1)) for itr_ in itr_feat[0]]
-        verb_feat = [verb_feat_init + self.cross_verb(verb_feat_init, itr_.unsqueeze(1).repeat(1, B, 1)) for itr_ in itr_feat[1]]
-        itr_refine_feat = (noun_feat, verb_feat)
-
-        language = sum(noun_feat) + sum(verb_feat)
-        frame_query = frame_query + language
-        frame_query = self.encode_frame_query(frame_query, enc_mask, cal_procedure, itr_refine_feat)
+        frame_query = self.encode_frame_query(frame_query, enc_mask, cal_procedure)
         frame_query = frame_query[:T].flatten(0, 1)  # TfQ, LB, C
 
         if self.use_sim:
@@ -604,76 +586,30 @@ class ItrSpatialTemporal(nn.Module):
             refined_query = refined_query.view(frame_query.shape)
         return refined_query
         
-    def spatial_temporal_transformer(self,layer_idx, frame_query, calculation_procedure, noun_verb_feature):
-        if calculation_procedure is not None:
-            allType = [ty.label for ty in calculation_procedure]
-        else:
-            allType = []
-        if calculation_procedure is not None and 'NP' in allType and 'VP' in allType:
-            frame_query_dict_forward = {}
-            for step in calculation_procedure:
-                if len(step.child) > 0 and all(child in frame_query_dict_forward.keys() for child in step.child):
-                    child_query = [frame_query_dict_forward[child_id] for child_id in step.child]
-                    child_query = sum(child_query) / len(child_query)
-                    frame_query_dict_forward[step.id] = child_query + self.np_vp_refinement(layer_idx, child_query, step=step)
-                else:
-                    frame_query_dict_forward[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
-            backward_procedure = calculation_procedure[::-1]
-            frame_query_dict_back = {}
-            for step in backward_procedure:
-                if step.id != '0_0_0' and step.parent in frame_query_dict_back.keys():
-                    parent_query = frame_query_dict_back[step.parent]
-                    frame_query_dict_back[step.id] = parent_query + self.np_vp_refinement(layer_idx, parent_query, step=step)
-                else:
-                    frame_query_dict_back[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
-            # backward = frame_query_dict_back['0_0_0']
-            final = sum(sum(frame_query_dict_forward.values()) / len(frame_query_dict_forward) + sum(frame_query_dict_back.values()) / len(frame_query_dict_back)) / 2
-            return final
-            
-        else:
-            recurrent_num = len(noun_verb_feature[0])
-            all_noun, all_verb = noun_verb_feature
-            for recurrent_idx in range(recurrent_num):
-                noun, verb = all_noun[recurrent_idx], all_verb[recurrent_idx]
-                return_shape = frame_query.shape
-                spatial_query = frame_query.flatten(1, 2).permute(1, 0, 2) 
-                if self.cfg.ITR.FUSE_VISION_TEXT == 'add':
-                    spatial_query = spatial_query + noun
-                elif self.cfg.ITR.FUSE_VISION_TEXT == 'concat':
-                    noun = noun.repeat(spatial_query.shape[0], spatial_query.shape[1], 1)
-                    spatial_query = torch.cat([spatial_query, noun], dim=-1)
-                    spatial_query = self.linear_concate_spatial[layer_idx](spatial_query)
-                else:
-                    raise NotImplementedError
-                spatial_query = self.spatial_encoder[layer_idx](spatial_query)
-                spatial_query = self.spatial_ffn[layer_idx](spatial_query)
-                spatial_query = spatial_query.permute(1, 0, 2).view(return_shape)
-
-                temporal_query = spatial_query.flatten(1, 2)
-                if self.cfg.ITR.FUSE_VISION_TEXT == 'add':
-                    temporal_query = temporal_query + verb
-                elif self.cfg.ITR.FUSE_VISION_TEXT == 'concat':
-                    verb = verb.repeat(temporal_query.shape[0], temporal_query.shape[1], 1)
-                    temporal_query = torch.cat([temporal_query, verb], dim=-1)
-                    temporal_query = self.linear_concate_temporal[layer_idx](temporal_query)
-                else:
-                    raise NotImplementedError
-                temporal_query = self.temp_encoder[layer_idx](temporal_query)
-                temporal_query = self.temp_ffn[layer_idx](temporal_query)
-                temporal_query = temporal_query.view(return_shape)
-            if self.cfg.ITR.WEIGHT_RESUDIAL_IN_RNN:
-                frame_query = self.weight_resudial_RNN(frame_query.flatten(0, 2)).reshape(return_shape)
-            return temporal_query + frame_query
-
-    def encode_frame_query(self, frame_query, attn_mask, cal_procedure, itr_refine_feat):
+    def spatial_temporal_transformer(self,layer_idx, frame_query, calculation_procedure):
+        frame_query_dict_forward = {}
+        for step in calculation_procedure:
+            if len(step.child) > 0 and all(child in frame_query_dict_forward.keys() for child in step.child):
+                child_query = [frame_query_dict_forward[child_id] for child_id in step.child]
+                child_query = sum(child_query) / len(child_query)
+                frame_query_dict_forward[step.id] = child_query + self.np_vp_refinement(layer_idx, child_query, step=step)
+            else:
+                frame_query_dict_forward[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
+        backward_procedure = calculation_procedure[::-1]
+        frame_query_dict_back = {}
+        for step in backward_procedure:
+            if step.id != '0_0_0' and step.parent in frame_query_dict_back.keys():
+                parent_query = frame_query_dict_back[step.parent]
+                frame_query_dict_back[step.id] = parent_query + self.np_vp_refinement(layer_idx, parent_query, step=step)
+            else:
+                frame_query_dict_back[step.id] = frame_query + self.np_vp_refinement(layer_idx, frame_query, step=step)
+        final = sum(sum(frame_query_dict_forward.values()) / len(frame_query_dict_forward) + sum(frame_query_dict_back.values()) / len(frame_query_dict_back)) / 2
+        return final
+    def encode_frame_query(self, frame_query, attn_mask, cal_procedure):
         """
         input shape (frame_query)   : T, fQ, LB, C
         output shape (frame_query)  : T, fQ, LB, C
         """
-
-        # Not using window-based attention if self.window_size == 0.
-        assert len(itr_refine_feat) == 2
-        assert itr_refine_feat[0][0].shape == itr_refine_feat[1][0].shape
         if self.window_size == 0:
             return_shape = frame_query.shape  # T, fQ, LB, C
             frame_query = frame_query.flatten(0, 1)  # TfQ, LB, C
@@ -704,12 +640,12 @@ class ItrSpatialTemporal(nn.Module):
 
             for layer_idx in range(self.enc_layers):
                 if self.training or layer_idx % 2 == 0:
-                    frame_query = self._window_attn(frame_query, window_mask, layer_idx, cal_procedure, itr_refine_feat)
+                    frame_query = self._window_attn(frame_query, window_mask, layer_idx, cal_procedure)
                 else:
-                    frame_query = self._shift_window_attn(frame_query, shift_window_mask, layer_idx, cal_procedure, itr_refine_feat)
+                    frame_query = self._shift_window_attn(frame_query, shift_window_mask, layer_idx, cal_procedure)
             return frame_query
 
-    def _window_attn(self, frame_query, attn_mask, layer_idx, cal_procedure, itr_refine_feat):
+    def _window_attn(self, frame_query, attn_mask, layer_idx, cal_procedure):
         T, fQ, LB, C = frame_query.shape
         # LBN, WTfQ = attn_mask.shape
 
@@ -723,9 +659,9 @@ class ItrSpatialTemporal(nn.Module):
         frame_query = frame_query.reshape(W, fQ, LB * Nw, C)
         if self.cfg.ITR.WEIGHT_RESUDIAL_PATH:
             frame_query = self.weight_resudial_path(frame_query.flatten(0, 2)).reshape(T, fQ, LB, C)
-            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure, itr_refine_feat)
+            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure)
         else:
-            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure, itr_refine_feat)
+            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure)
             
         frame_query = frame_query.reshape(W * fQ, LB * Nw, C)
         frame_query = self.enc_ffn[layer_idx](frame_query)
@@ -733,7 +669,7 @@ class ItrSpatialTemporal(nn.Module):
 
         return frame_query
 
-    def _shift_window_attn(self, frame_query, attn_mask, layer_idx, cal_procedure, itr_refine_feat):
+    def _shift_window_attn(self, frame_query, attn_mask, layer_idx, cal_procedure):
         T, fQ, LB, C = frame_query.shape
         # LBNH, WfQ, WfQ = attn_mask.shape
 
@@ -749,9 +685,9 @@ class ItrSpatialTemporal(nn.Module):
         frame_query = frame_query.reshape(W, fQ, LB * Nw, C)
         if self.cfg.ITR.WEIGHT_RESUDIAL_PATH:
             frame_query = self.weight_resudial_path(frame_query.flatten(0, 2)).reshape(T, fQ, LB, C)
-            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure, itr_refine_feat)
+            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure)
         else:
-            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure, itr_refine_feat)
+            frame_query = frame_query + self.spatial_temporal_transformer(layer_idx, frame_query,cal_procedure)
         frame_query = frame_query.reshape(W * fQ, LB * Nw, C)
         frame_query = self.enc_ffn[layer_idx](frame_query)
         frame_query = frame_query.reshape(W, fQ, LB, Nw, C).permute(3, 0, 1, 2, 4).reshape(T, fQ, LB, C)

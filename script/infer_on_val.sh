@@ -11,14 +11,14 @@
 cd ..
 source activate
 conda activate vita 
-model_dir="/home/s222126678/Documents/meccano/project/ITR_Dev/output/exp_10_12"
+model_dir="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_18"
 
 for model_file in "$model_dir"/*.pth
 do
     rm -rf output_tem/inference
     echo "======= Model name: $(basename "$model_file") ======="
     python train_net_itr.py \
-    --config-file /home/s222126678/Documents/meccano/project/ITR_Dev/output/exp_10_12/config.yaml \
+    --config-file /home/s222126678/Documents/meccano/project/ITR/output/exp_10_18/config.yaml \
     --num-gpus 4 --dist-url auto --eval-only \
     MODEL.WEIGHTS "$model_file" \
     OUTPUT_DIR output_tem DATASETS.TEST '("mevis_val",)' \

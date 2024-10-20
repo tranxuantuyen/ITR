@@ -137,7 +137,7 @@ class MeViSDatasetMapper:
         self.max_tokens = 40
         # self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
         self.tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
-        self.nlp = spacy.load('en_core_web_sm')
+        # self.nlp = spacy.load('en_core_web_sm')
 
     @classmethod
     def from_config(cls, cfg, is_train: bool = True, is_tgt: bool = True):

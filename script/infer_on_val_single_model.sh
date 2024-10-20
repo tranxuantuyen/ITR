@@ -9,8 +9,8 @@
 # SBATCH --qos=batch-short
 
 cd ..
-model_file="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_05/model_0082499.pth"
-config_file="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_05/config.yaml"
+model_file="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_18/model_0054999.pth"
+config_file="/home/s222126678/Documents/meccano/project/ITR/output/exp_10_18/config.yaml"
 num_gpus=4
 
 

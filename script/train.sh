@@ -15,7 +15,8 @@ python train_net_itr.py \
     --config-file configs/itr_swin_tiny.yaml \
     --num-gpus 4 --dist-url auto \
     MODEL.WEIGHTS model_final_86143f.pkl \
-    OUTPUT_DIR output/exp_10_14 DATASETS.TEST '("mevis_val",)' \
+    OUTPUT_DIR output/exp_10_18 DATASETS.TEST '("mevis_val",)' \
+    SEED -1 \
     SOLVER.BASE_LR 0.000025 \
     SOLVER.MAX_ITER 160000 \
     SOLVER.IMS_PER_BATCH 4 \
@@ -23,6 +24,6 @@ python train_net_itr.py \
     DATALOADER.NUM_WORKERS 26 \
     SOLVER.CHECKPOINT_PERIOD 2500 \
     ITR.SPTIO_TEMP_ENCODER_LAYER 6 \
-    ITR.WEIGHT_RESUDIAL_IN_RNN True \
+    ITR.WEIGHT_RESUDIAL_IN_RNN False \
     ITR.WEIGHT_RESUDIAL_PATH False \
     ITR.FUSE_VISION_TEXT 'add'
